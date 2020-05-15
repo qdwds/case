@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>大文件上传</title>
+</head>
+
+<body>
+  <input type="file" id="btnFile">
+  <input type="button" value="上传" onclick="upload()">
+  <input type="button" value="大文件上传" onclick="maxUpload(0)">
+</body>
+
+</html>
+<script src="https://cdn.bootcdn.net/ajax/libs/axios/0.19.2/axios.min.js"></script>
+<script>
+
+  let btnFile = document.getElementById('btnFile')
+  console.log(btnFile.files);
+  //  没个区块为10m
+  let chunkSize = 1024 * 1024 * 10;
+  //  大文件上传
+  function maxUpload(index) {
+    debugger
+    let file = btnFile.files[0];
+    console.log(file);
+    //  切割文件名称 + 后缀名
+    let [fname, fext] = file.name.split('.')
+    let start = index * chunkSize;
+    console.log(start);
+    //  区块为0  file.size是文件大小
+    if (start > file.size) {
+      //  所有文件都上传完成后合并文件
+      merge(file.name)
+      return
+    }
+    //  把文件大写依次切割为10m一份
+    let blob = file.slice(start, start + chunkSize)
+    let blobName = `${fname}.${index}.${fext}`
+    let blobFile = new File([blob], blobName)// 切割出来的每一块
+    //  通过form表单上传
+    let formData = new FormData();
+    formData.append('file', blobFile);
+    axios.post('/maxUpload', formData)
+      .then((result) => {
+        console.log(result)
+        //  通过递归上传区块
+        maxUpload(++index)
+        console.log(index);
+      }).catch((err) => {
+        console.log(err);
+      });
+  }
+
+
+  //  合并所有文件函数
+  function merge(name) {
+    axios.post('/merge', { name: name })
+      .then(res => {
+        console.log(res);
+        let a = document.createElement('a')
+        document.body.append(a)
+        a.href = res.data.url
+        a.innerHTML = res.data.url
+      })
+  }
+  //  文件上传
+  function upload() {
+    let file = btnFile.files[0];
+    let formData = new FormData();
+    formData.append('file', file);
+    axios.post('/upload', formData)
+      .then((result) => {
+        console.log(result)
+      }).catch((err) => {
+        console.log(err);
+      });
+  }
+</script>
